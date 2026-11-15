@@ -1,5 +1,72 @@
 let html5QrCode = null;
 
+function makeAttendanceKey(record) {
+    return `${record.rollNo}|${record.date}|${record.group}`;
+}
+
+function mergeAttendanceRecords(localRecords, remoteRecords) {
+    const merged = [...(localRecords || [])];
+    const seen = new Set(merged.map(record => makeAttendanceKey(record)));
+
+    for (const record of remoteRecords || []) {
+        const key = makeAttendanceKey(record);
+        if (!seen.has(key)) {
+            merged.push(record);
+            seen.add(key);
+        }
+    }
+
+    return merged;
+}
+
+async function loadAttendanceFromFirebase() {
+    if (!window.firebaseDB) return JSON.parse(localStorage.getItem("collegeAttendance") || "[]");
+
+    const { db, ref, get } = window.firebaseDB;
+    try {
+        const snapshot = await get(ref(db, "attendance"));
+        if (!snapshot.exists()) {
+            return JSON.parse(localStorage.getItem("collegeAttendance") || "[]");
+        }
+
+        const attendanceData = snapshot.val();
+        const remoteRecords = [];
+
+        Object.keys(attendanceData || {}).forEach(groupKey => {
+            const groupData = attendanceData[groupKey] || {};
+            Object.keys(groupData).forEach(dateKey => {
+                const dateData = groupData[dateKey] || {};
+                Object.keys(dateData).forEach(rollKey => {
+                    remoteRecords.push(dateData[rollKey]);
+                });
+            });
+        });
+
+        const merged = mergeAttendanceRecords(
+            JSON.parse(localStorage.getItem("collegeAttendance") || "[]"),
+            remoteRecords
+        );
+
+        localStorage.setItem("collegeAttendance", JSON.stringify(merged));
+        return merged;
+    } catch (error) {
+        console.error("Unable to load attendance from Firebase:", error);
+        return JSON.parse(localStorage.getItem("collegeAttendance") || "[]");
+    }
+}
+
+async function saveAttendanceToFirebase(record) {
+    if (!window.firebaseDB) return;
+
+    const { db, ref, set } = window.firebaseDB;
+    const attendanceRef = ref(db, `attendance/${record.group}/${record.date}/${record.rollNo}`);
+    try {
+        await set(attendanceRef, record);
+    } catch (error) {
+        console.error("Unable to save attendance to Firebase:", error);
+    }
+}
+
 function startQRScanner() {
     const readerDiv = document.getElementById("reader");
     readerDiv.style.display = "block";
@@ -11,25 +78,20 @@ function startQRScanner() {
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
     html5QrCode.start(
-        { facingMode: "environment" }, 
+        { facingMode: "environment" },
         config,
         (decodedText, decodedResult) => {
-            // Yahan se direct onScanSuccess ko call kiya hai
             onScanSuccess(decodedText, decodedResult);
         },
-        (errorMessage) => {
-            // Scanning in progress errors (ignore)
-        }
+        () => {}
     ).catch(err => {
         console.error("Unable to start scanning.", err);
         alert("Camera start nahi ho saka! Make sure aap Live Server use kar rahe hain aur camera permission allowed hai.");
     });
 }
 
-// Jab QR code successfully scan ho jaye
 function onScanSuccess(decodedText, decodedResult) {
     var scannedRollNo = Number(decodedText.trim());
-    
     var studentFound = null;
     for (var i = 0; i < registeredStudents.length; i++) {
         if (registeredStudents[i].rollNo === scannedRollNo) {
@@ -43,7 +105,6 @@ function onScanSuccess(decodedText, decodedResult) {
         return;
     }
 
-    // Scanner ko rokhna aur hide karna (Correct variable name: html5QrCode)
     if (html5QrCode) {
         html5QrCode.stop().then(() => {
             document.getElementById("reader").style.display = "none";
@@ -56,11 +117,9 @@ function onScanSuccess(decodedText, decodedResult) {
 }
 
 function onScanFailure(error) {
-    // Scanning errors ko ignore karne ke liye
 }
 
-// Manual button ke liye function
-function saveAttendance() {
+async function saveAttendance() {
     var rollNoInput = Number(document.getElementById("rollNo").value.trim());
     var selectedGroup = document.getElementById("groupSelect").value;
 
@@ -82,14 +141,13 @@ function saveAttendance() {
         return;
     }
 
-    processAttendance(studentFound.rollNo, studentFound.group);
-    
+    await processAttendance(studentFound.rollNo, studentFound.group);
+
     document.getElementById("rollNo").value = "";
     document.getElementById("groupSelect").selectedIndex = 0;
 }
 
-// Common function jo check karega ke aaj attendance lag chuki hai ya nahi
-function processAttendance(rollNo, group) {
+async function processAttendance(rollNo, group) {
     var studentFound = null;
     for (var i = 0; i < registeredStudents.length; i++) {
         if (registeredStudents[i].rollNo === rollNo) {
@@ -104,11 +162,9 @@ function processAttendance(rollNo, group) {
     var currentDate = new Date().toISOString().split('T')[0];
 
     var allAttendance = JSON.parse(localStorage.getItem("collegeAttendance")) || [];
-
-    // Check karein ke kya is student ki aaj ki date mein pehle se attendance lag chuki hai?
     var alreadyMarked = false;
     for (var j = 0; j < allAttendance.length; j++) {
-        if (allAttendance[j].rollNo === rollNo && allAttendance[j].date === currentDate) {
+        if (allAttendance[j].rollNo === rollNo && allAttendance[j].date === currentDate && allAttendance[j].group === group) {
             alreadyMarked = true;
             break;
         }
@@ -119,7 +175,6 @@ function processAttendance(rollNo, group) {
         return;
     }
 
-    // Agar aaj ki attendance nahi lagi, toh naya record save karein
     var attendanceRecord = {
         rollNo: studentFound.rollNo,
         name: studentFound.name,
@@ -131,20 +186,23 @@ function processAttendance(rollNo, group) {
 
     allAttendance.push(attendanceRecord);
     localStorage.setItem("collegeAttendance", JSON.stringify(allAttendance));
+    await saveAttendanceToFirebase(attendanceRecord);
 
-    loadTodayAttendance();
+    await loadTodayAttendance();
     alert("✅ Success: " + studentFound.name + " ki aaj ki attendance lag gayi!");
 }
-// Aaj ki attendance ko screen par load aur show karna
-function loadTodayAttendance() {
+
+async function loadTodayAttendance() {
     var currentDate = new Date().toISOString().split('T')[0];
-    var allAttendance = JSON.parse(localStorage.getItem("collegeAttendance")) || [];
+    var allAttendance = await loadAttendanceFromFirebase();
 
     var groups = ["CS", "Bio", "Eng", "Arts", "Gen"];
     for (var g = 0; g < groups.length; g++) {
         var grp = groups[g].toLowerCase();
-        document.getElementById(grp + "List").innerHTML = "";
-        document.getElementById(grp + "Box").style.display = "none";
+        var listElement = document.getElementById(grp + "List");
+        var boxElement = document.getElementById(grp + "Box");
+        if (listElement) listElement.innerHTML = "";
+        if (boxElement) boxElement.style.display = "none";
     }
 
     for (var i = 0; i < allAttendance.length; i++) {
@@ -152,24 +210,25 @@ function loadTodayAttendance() {
         if (record.date === currentDate) {
             var targetListId = record.group.toLowerCase() + "List";
             var targetBoxId = record.group.toLowerCase() + "Box";
+            var targetList = document.getElementById(targetListId);
+            var targetBox = document.getElementById(targetBoxId);
 
-            document.getElementById(targetBoxId).style.display = "block";
+            if (targetBox) targetBox.style.display = "block";
 
-            var recordHTML = "<div class='student-item' onclick='showStudentDetails(" + record.rollNo + ", \"" + record.date + "\")'>" +
-                             "<b>" + record.name + "</b> (Roll No: " + record.rollNo + ") - " +
-                             "<small style='color:green;'>Present at " + record.time + "</small></div>";
-
-            document.getElementById(targetListId).innerHTML += recordHTML;
+            if (targetList) {
+                var recordHTML = "<div class='student-item' onclick='showStudentDetails(" + record.rollNo + ", \"" + record.date + "\")'>" +
+                    "<b>" + record.name + "</b> (Roll No: " + record.rollNo + ") - " +
+                    "<small style='color:green;'>Present at " + record.time + "</small></div>";
+                targetList.innerHTML += recordHTML;
+            }
         }
     }
 }
 
-// Student ki detail show karne ke liye naye page par bhejna
 function showStudentDetails(rollNo, date) {
     window.location.href = "showStudentData.html?rollNo=" + rollNo + "&date=" + date;
 }
 
-// Page khulte hi aaj ki attendance load ho jayegi
 window.onload = function() {
     loadTodayAttendance();
 };

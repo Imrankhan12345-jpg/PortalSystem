@@ -3,14 +3,10 @@
 <head>
     <title>Degree College Attendance System</title>
     <link rel="stylesheet" href="style.css">
-    <!-- html5-qrcode library ka CDN -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
-
-    <!-- College Header & Logo Placeholder -->
     <div class="college-header">
-        <!-- Yahan aap apna logo image laga sakte hain (src mein image ka naam dein) -->
         <img src="./logo.png" alt="College Logo" class="college-logo" onerror="this.style.display='none'">
         <div>
             <h1>Government Degree College</h1>
@@ -19,10 +15,8 @@
     </div>
 
     <div class="main-container">
-        <!-- Student Attendance Form Card -->
         <div class="card">
             <h2>Student Attendance Form</h2>
-            
             <div class="form-group">
                 <label>Roll Number:</label>
                 <input type="text" id="rollNo" placeholder="Enter Roll Number">
@@ -41,20 +35,13 @@
             </div>
 
             <button class="btn-primary" onclick="saveAttendance()">Mark Attendance Manually</button>
-
             <div class="divider">OR</div>
-
-            <!-- QR Code Scan Button -->
             <button class="btn-secondary" onclick="startQRScanner()">Scan QR Code</button>
-
-            <!-- Scanner Viewport -->
             <div id="reader" style="width: 100%; max-width: 300px; display: none; margin: 15px auto;"></div>
         </div>
 
-        <!-- Attendance Records Section -->
         <div class="card">
             <h3>Attendance Records by Group (Today)</h3>
-            
             <div class="group-box" id="csBox">
                 <h4>Computer Science</h4>
                 <div id="csList"></div>
@@ -81,9 +68,27 @@
             </div>
         </div>
     </div>
-    
-   <script src="data.js"></script>
-   <script src="app.js"></script>
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZLCOdefBONjySJ5OAetvxoz94zZ1KBvk",
+            authDomain: "studenportaldata.firebaseapp.com",
+            databaseURL: "https://studenportaldata-default-rtdb.firebaseio.com",
+            projectId: "studenportaldata",
+            storageBucket: "studenportaldata.firebasestorage.app",
+            messagingSenderId: "1034159221838",
+            appId: "1:1034159221838:web:a0d472290ad2982588a71f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        window.firebaseDB = { db, ref, set, get };
+    </script>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
