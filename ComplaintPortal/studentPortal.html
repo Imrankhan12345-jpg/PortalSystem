@@ -25,7 +25,7 @@
                         <h2 id="studentWelcomeName" style="margin-bottom: 5px;">Welcome, Student</h2>
                         <p id="studentInfoText" style="color: #64748b; margin: 0; font-size: 14px;">Roll No: -- | Group: --</p>
                     </div>
-                    <button class="btn-logout" onclick="studentLogout()">Logout</button>
+                    <button class="btn-logout" onclick="handleStudentLogout()">Logout</button>
                 </div>
 
                 <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e2e8f0;">
@@ -117,6 +117,32 @@
             if (typeof loadStudentComplaints === "function") {
                 loadStudentComplaints();
             }
+        }
+
+        async function handleStudentLogout() {
+            let studentData = window.currentStudent;
+            if (!studentData) {
+                try {
+                    studentData = JSON.parse(localStorage.getItem("loggedInStudent") || "null");
+                } catch (error) {
+                    console.error("Unable to read student session during logout:", error);
+                }
+            }
+
+            // Best-effort cleanup: logging out must still work if Firebase is unavailable.
+            if (studentData && window.firebaseDB) {
+                try {
+                    const { db, ref, set } = window.firebaseDB;
+                    await set(ref(db, `activeLogins/${studentData.group}_${studentData.rollNo}`), null);
+                } catch (error) {
+                    console.error("Could not clear Firebase active login:", error);
+                }
+            }
+
+            // Remove only the login session; preserve attendance and complaint records.
+            localStorage.removeItem("loggedInStudent");
+            window.currentStudent = null;
+            window.location.replace("../VerifyUser/studenLogin.html");
         }
     </script>
 </body>
