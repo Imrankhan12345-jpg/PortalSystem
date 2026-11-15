@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Dashboard - Government Degree College</title>
+    <link rel="stylesheet" href="./studentPortal.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+</head>
+<body onload="checkLoginAndLoad()">
+
+    <!-- College Header -->
+    <div class="college-header">
+        <img src="../ATQRC/logo.png" alt="College Logo" class="college-logo" onerror="this.style.display='none'">
+        <div>
+            <h1>Government Degree College</h1>
+            <p>Student Attendance Report & Complaint Portal</p>
+        </div>
+    </div>
+
+    <div class="main-container">
+        
+        <!-- STUDENT DASHBOARD -->
+        <div id="dashboardSection">
+            
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 id="studentWelcomeName" style="margin-bottom: 5px;">Welcome, Student</h2>
+                        <p id="studentInfoText" style="color: #64748b; margin: 0; font-size: 14px;">Roll No: -- | Group: --</p>
+                    </div>
+                    <button class="btn-logout" onclick="studentLogout()">Logout</button>
+                </div>
+
+                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e2e8f0;">
+
+                <!-- Attendance Summary Box -->
+                <div class="stats-box" style="display: flex; gap: 15px;">
+                    <div class="stat-item" style="flex: 1;">
+                        <span class="stat-number" id="totalPresentCount">0</span>
+                        <span class="stat-label">Total Days Present</span>
+                    </div>
+                    <div class="stat-item" style="flex: 1; border-left-color: #2563eb;">
+                        <span class="stat-number" id="attendanceAccuracy" style="color: #2563eb;">0%</span>
+                        <span class="stat-label">Attendance Accuracy</span>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 20px;">Your Attendance History</h3>
+                <div id="attendanceHistoryList" class="history-list"></div>
+            </div>
+
+            <!-- Complaint Submission Card -->
+            <div class="card" style="margin-top: 20px;">
+                <h3>Submit Attendance Complaint / Issue</h3>
+                
+                <div class="form-group">
+                    <label>Your Email Address:</label>
+                    <input type="email" id="complaintEmail" placeholder="student@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Complaint Title (Mukhtasir unwan):</label>
+                    <input type="text" id="complaintTitle" placeholder="e.g., Present on Monday but marked Absent">
+                </div>
+
+                <div class="form-group">
+                    <label>Complaint Details / Message:</label>
+                    <textarea id="complaintText" rows="4" placeholder="Apni complaint tafseel se yahan likhein..."></textarea>
+                </div>
+
+                <button class="btn-secondary" onclick="submitNewComplaint()">Submit Complaint</button>
+
+                <h4 style="margin-top: 25px; color: #0b2545;">Your Submitted Complaints</h4>
+                <div id="myComplaintsList"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Firebase SDKs for Logout tracking -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZLCOdefBONjySJ5OAetvxoz94zZ1KBvk",
+            authDomain: "studenportaldata.firebaseapp.com",
+            projectId: "studenportaldata",
+            storageBucket: "studenportaldata.firebasestorage.app",
+            messagingSenderId: "1034159221838",
+            appId: "1:1034159221838:web:a0d472290ad2982588a71f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        window.firebaseDB = { db, ref, set };
+    </script>
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="../ATQRC/data.js"></script>
+    <script src="studentPortal.js"></script>
+    <script>
+        function checkLoginAndLoad() {
+            var studentData = localStorage.getItem("loggedInStudent");
+            if (!studentData) {
+                alert("Please login first!");
+                window.location.href = "login.html";
+                return;
+            }
+            window.currentStudent = JSON.parse(studentData);
+            document.getElementById("studentWelcomeName").innerText = "Welcome, " + currentStudent.name;
+            document.getElementById("studentInfoText").innerText = "Roll No: " + currentStudent.rollNo + " | Department: " + currentStudent.group;
+            
+            if (typeof loadStudentAttendanceSummary === "function") {
+                loadStudentAttendanceSummary();
+                loadStudentComplaints();
+            }
+        }
+
+        // Student Dashboard Logic & Attendance Loading
+function loadStudentAttendanceSummary() {
+    // LocalStorage se attendance records uthayein
+    var allAttendance = JSON.parse(localStorage.getItem("collegeAttendance")) || [];
+    var historyContainer = document.getElementById("attendanceHistoryList");
+    if (!historyContainer) return;
+    historyContainer.innerHTML = "";
+
+    // currentStudent check karein (session storage ya global object se)
+    if (!window.currentStudent) {
+        var savedStudent = localStorage.getItem("loggedInStudent");
+        if (savedStudent) {
+            window.currentStudent = JSON.parse(savedStudent);
+        } else {
+            return;
+        }
+    }
+
+    var studentRecords = [];
+    for (var i = 0; i < allAttendance.length; i++) {
+        // Roll Number aur Group dono match hone chahiye
+        if (Number(allAttendance[i].rollNo) === Number(window.currentStudent.rollNo) && 
+            allAttendance[i].group === window.currentStudent.group) {
+            studentRecords.push(allAttendance[i]);
+        }
+    }
+
+    var totalPresent = studentRecords.length;
+    var presentCountElem = document.getElementById("totalPresentCount");
+    var accuracyElem = document.getElementById("attendanceAccuracy");
+
+    if (presentCountElem) presentCountElem.innerText = totalPresent + " Days";
+
+    // Attendance Accuracy Calculation (Farz karein total 25 working days hain ya dynamic)
+    var totalWorkingDays = 25; 
+    var accuracy = totalPresent > 0 ? Math.min(100, Math.round((totalPresent / totalWorkingDays) * 100)) : 0; 
+    if (accuracyElem) accuracyElem.innerText = accuracy + "%";
+
+    // Months ke hisaab se group karna
+    var monthsData = {};
+    for (var j = 0; j < studentRecords.length; j++) {
+        var rec = studentRecords[j];
+        var ym = rec.date ? rec.date.substring(0, 7) : "2026-06"; 
+        if (!monthsData[ym]) {
+            monthsData[ym] = [];
+        }
+        monthsData[ym].push(rec);
+    }
+
+    var monthNames = {
+        "01": "January", "02": "February", "03": "March", "04": "April", 
+        "05": "May", "06": "June", "07": "July", "08": "August", 
+        "09": "September", "10": "October", "11": "November", "12": "December"
+    };
+
+    var keys = Object.keys(monthsData);
+    if (keys.length === 0) {
+        historyContainer.innerHTML = "<p style='color:#64748b; font-size:14px;'>Abhi tak aapka koi attendance record mojood nahi hai.</p>";
+        return;
+    }
+
+    for (var k = 0; k < keys.length; k++) {
+        var ym = keys[k];
+        var parts = ym.split("-");
+        var monthTitle = (monthNames[parts[1]] || parts[1]) + " " + parts[0];
+        var presentInMonth = monthsData[ym].length;
+
+        var monthCardHTML = `
+            <div class="month-card" style="border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 6px; padding: 15px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleMonthDetails('${ym}')">
+                    <div>
+                        <h4 style="margin: 0; color: #0b2545; font-size: 16px;">📅 ${monthTitle}</h4>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #475569;">
+                            <span style="color: #16a34a; font-weight: bold;">Present: ${presentInMonth} Days</span>
+                        </p>
+                    </div>
+                    <span style="font-size: 14px; color: #2563eb; font-weight: bold;">View Details ▼</span>
+                </div>
+
+                <div id="details-${ym}" style="display: none; margin-top: 12px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+                    <div id="list-${ym}"></div>
+                </div>
+            </div>
+        `;
+        historyContainer.innerHTML += monthCardHTML;
+
+        setTimeout((function(ymKey, recordsList) {
+            return function() {
+                var innerContainer = document.getElementById("list-" + ymKey);
+                if (innerContainer) {
+                    var htmlContent = "";
+                    for (var r = 0; r < recordsList.length; r++) {
+                        htmlContent += `
+                            <div style="background: #fff; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; font-size: 13px;">
+                                <span><b>Date:</b> ${recordsList[r].date}</span>
+                                <span style="color: #16a34a; font-weight: bold;">Present (${recordsList[r].time || 'N/A'})</span>
+                            </div>
+                        `;
+                    }
+                    innerContainer.innerHTML = htmlContent;
+                }
+            };
+        })(ym, monthsData[ym]), 50);
+    }
+}
+
+function toggleMonthDetails(ym) {
+    var detailsDiv = document.getElementById("details-" + ym);
+    if (detailsDiv) {
+        detailsDiv.style.display = detailsDiv.style.display === "none" ? "block" : "none";
+    }
+}
+
+// 5. Load Student's own complaints (Fixed Toggle Function)
+function loadStudentComplaints() {
+    var allComplaints = JSON.parse(localStorage.getItem("collegeComplaints")) || [];
+    var listContainer = document.getElementById("myComplaintsList");
+    if (!listContainer) return;
+    listContainer.innerHTML = "";
+
+    if (!window.currentStudent) {
+        var savedStudent = localStorage.getItem("loggedInStudent");
+        if (savedStudent) {
+            window.currentStudent = JSON.parse(savedStudent);
+        } else {
+            return;
+        }
+    }
+
+    var count = 0;
+    for (var i = 0; i < allComplaints.length; i++) {
+        var comp = allComplaints[i];
+        
+        if (Number(comp.rollNo) === Number(window.currentStudent.rollNo) && comp.group === window.currentStudent.group) {
+            count++;
+            var statusBadge = comp.status === "Resolved" ? 
+                "<span style='color: #16a34a; font-weight: bold; font-size: 12px;'>[Resolved]</span>" : 
+                "<span style='color: #d97706; font-weight: bold; font-size: 12px;'>[Pending]</span>";
+
+            var complaintHTML = `
+                <div class="complaint-card" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 15px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleComplaintDetail('${comp.id}')">
+                        <div>
+                            <span style="font-weight: 600; color: #0b2545; font-size: 14px;">📌 ${comp.title}</span>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Date: ${comp.date}</div>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                            <span style="font-size: 12px; color: #2563eb; margin-left: 8px; font-weight: bold;">View ▼</span>
+                        </div>
+                    </div>
+                    
+                    <div id="comp-detail-${comp.id}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 13px; color: #475569;">
+                        <p style="margin: 0 0 5px 0;"><b>Email:</b> ${comp.email}</p>
+                        <p style="margin: 0 0 5px 0;"><b>Message:</b></p>
+                        <p style="margin: 0; background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #e2e8f0;">${comp.message}</p>
+                    </div>
+                </div>
+            `;
+            listContainer.innerHTML += complaintHTML;
+        }
+    }
+
+    if (count === 0) {
+        listContainer.innerHTML = "<p style='color:#64748b; font-size:13px;'>Aapne abhi tak koi complaint submit nahi ki.</p>";
+    }
+}
+
+// Complaint detail ko toggle karne ke liye sahi function
+function toggleComplaintDetail(id) {
+    var detailBox = document.getElementById("comp-detail-" + id);
+    if (detailBox) {
+        if (detailBox.style.display === "block") {
+            detailBox.style.display = "none";
+        } else {
+            detailBox.style.display = "block";
+        }
+    }
+}
+    </script>
+</body>
+</html>

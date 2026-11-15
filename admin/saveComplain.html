@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel - Saved Complaints & Active Logins</title>
+    <link rel="stylesheet" href="../ComplaintPortal/studentPortal.css">
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body id="saveComplainBody" onload="initAdmin()">
+
+    <!-- Admin Top Navbar -->
+    <nav id="adminNavbar" class="admin-navbar">
+        <div id="adminBrand" class="admin-brand">
+            🎓 GDC Admin Panel <span id="brandBadge">Portal</span>
+        </div>
+        <div id="navLinksContainer" class="nav-links">
+            <a href="mainDashboard.html" id="navDashboardLink">📊 Attendance Dashboard</a>
+            <a href="saveComplain.html" id="navComplainLink" class="active">📩 Complaints & Active Logins</a>
+        </div>
+    </nav>
+
+    <div id="adminComplainGrid" class="admin-grid">
+        
+        <!-- Left Column: Active Logins Card -->
+        <div id="activeLoginsCard" class="card">
+            <h2 id="activeLoginsHeading">🟢 Active Student Logins</h2>
+            <p id="activeCountText">Total Active: 0</p>
+            <div id="activeLoginsList">
+                <p id="loadingActiveMsg">Loading active sessions...</p>
+            </div>
+        </div>
+
+        <!-- Right Column: Complaints Card -->
+        <div id="complaintsCard" class="card">
+            <h2 id="complaintsHeading">📋 All Student Complaints</h2>
+            <div id="adminComplaintsList">
+                <p id="loadingComplaintsMsg">Loading complaints...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs for Admin -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZLCOdefBONjySJ5OAetvxoz94zZ1KBvk",
+            authDomain: "studenportaldata.firebaseapp.com",
+            projectId: "studenportaldata",
+            storageBucket: "studenportaldata.firebasestorage.app",
+            messagingSenderId: "1034159221838",
+            appId: "1:1034159221838:web:a0d472290ad2982588a71f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.initAdmin = function() {
+            const activeRef = ref(db, 'activeLogins');
+            onValue(activeRef, (snapshot) => {
+                const listContainer = document.getElementById("activeLoginsList");
+                const countText = document.getElementById("activeCountText");
+                listContainer.innerHTML = "";
+
+                if (!snapshot.exists()) {
+                    countText.innerText = "Total Active Logins: 0";
+                    listContainer.innerHTML = "<p style='color: #64748b;'>No students currently logged in.</p>";
+                    return;
+                }
+
+                const logins = snapshot.val();
+                const keys = Object.keys(logins);
+                countText.innerText = "Total Active Logins: " + keys.length;
+
+                let html = "<ul style='padding-left: 18px; margin: 0;'>";
+                keys.forEach(key => {
+                    const student = logins[key];
+                    html += `<li style='margin-bottom: 8px; font-size: 14px; color: #334155;'><b>${student.name}</b> (Roll: ${student.rollNo}, ${student.group})<br><small style='color:#64748b;'>Logged in at ${student.loginTime}</small></li>`;
+                });
+                html += "</ul>";
+                listContainer.innerHTML = html;
+            });
+
+            loadAdminComplaints();
+        }
+
+        window.loadAdminComplaints = function() {
+            var allComplaints = JSON.parse(localStorage.getItem("collegeComplaints")) || [];
+            var container = document.getElementById("adminComplaintsList");
+            container.innerHTML = "";
+
+            if (allComplaints.length === 0) {
+                container.innerHTML = "<p style='color: #64748b;'>Abhi tak koi complaint save nahi hui hai.</p>";
+                return;
+            }
+
+            for (var i = allComplaints.length - 1; i >= 0; i--) {
+                var comp = allComplaints[i];
+                var statusColor = comp.status === "Resolved" ? "badge-present" : "badge-pending";
+
+                container.innerHTML += `
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 15px; margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <h4 style="margin: 0; color: #0b2545;">📌 ${comp.title}</h4>
+                            <span class="${statusColor}">${comp.status}</span>
+                        </div>
+                        <p style="margin: 0 0 5px 0; font-size: 13px; color: #475569;"><b>Student:</b> ${comp.name} | <b>Roll No:</b> ${comp.rollNo} | <b>Group:</b> ${comp.group}</p>
+                        <p style="margin: 0 0 5px 0; font-size: 13px; color: #475569;"><b>Email:</b> <a href="mailto:${comp.email}" style="color: #2563eb; text-decoration: none;">${comp.email || 'N/A'}</a></p>
+                        <div style="background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px; margin-top: 8px; font-size: 14px;">${comp.message}</div>
+                        <div style="margin-top: 10px; text-align: right;">
+                            ${comp.status !== "Resolved" ? `<button onclick="markResolved(${comp.id})" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">Mark as Resolved</button>` : '<span style="color: #16a34a; font-weight: bold; font-size: 13px;">✔ Resolved</span>'}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        window.markResolved = function(id) {
+            var allComplaints = JSON.parse(localStorage.getItem("collegeComplaints")) || [];
+            for (var i = 0; i < allComplaints.length; i++) {
+                if (allComplaints[i].id === id) {
+                    allComplaints[i].status = "Resolved";
+                    break;
+                }
+            }
+            localStorage.setItem("collegeComplaints", JSON.stringify(allComplaints));
+            loadAdminComplaints();
+        }
+    </script>
+</body>
+</html>

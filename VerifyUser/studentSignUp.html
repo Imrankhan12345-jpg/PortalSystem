@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Sign Up - Government Degree College</title>
+    <link rel="stylesheet" href="./loginPortal.css">
+    <!-- Toastify CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+</head>
+<body>
+
+    <div class="portal-container">
+        <div class="portal-card">
+            <img src="../ATQRC/logo.png" alt="College Logo" class="portal-logo" onerror="this.style.display='none'">
+            <h2 class="portal-title">Student Sign Up</h2>
+            <p class="portal-subtitle">Apna Roll Number, Group aur Password set karein.</p>
+            
+            <div class="form-group-custom">
+                <label>Roll Number:</label>
+                <input type="number" id="signupRollNo" placeholder="Enter Your Roll Number">
+            </div>
+
+            <div class="form-group-custom">
+                <label>Select Group:</label>
+                <select id="signupGroup">
+                    <option value="" disabled selected>Select Your Group</option>
+                    <option value="CS">Computer Science</option>
+                    <option value="Bio">Biology Science</option>
+                    <option value="Eng">Pre-Engineering</option>
+                    <option value="Arts">Arts</option>
+                    <option value="Gen">General</option>
+                </select>
+            </div>
+
+            <div class="form-group-custom">
+                <label>Password:</label>
+                <div class="password-wrapper">
+                    <input type="password" id="signupPassword" placeholder="Create Password">
+                    <button type="button" class="eye-btn" id="toggleSignupPass" onclick="togglePassword('signupPassword', 'toggleSignupPass')">👁️</button>
+                </div>
+            </div>
+
+            <button class="btn-portal-primary" id="signupBtn" onclick="studentSignUp()">Sign Up</button>
+            
+            <div class="portal-links">
+                <span>Already exist account?</span>
+                <a href="studenLogin.html">Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZLCOdefBONjySJ5OAetvxoz94zZ1KBvk",
+            authDomain: "studenportaldata.firebaseapp.com",
+            projectId: "studenportaldata",
+            storageBucket: "studenportaldata.firebasestorage.app",
+            messagingSenderId: "1034159221838",
+            appId: "1:1034159221838:web:a0d472290ad2982588a71f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        window.firebaseDB = { db, ref, set, get };
+    </script>
+
+    <!-- Toastify JS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="../ATQRC/data.js"></script>
+    <script>
+        function showToast(message, isError = false) {
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                style: { background: isError ? "#dc2626" : "#16a34a" }
+            }).showToast();
+        }
+
+        function togglePassword(fieldId, btnId) {
+            const passwordField = document.getElementById(fieldId);
+            const eyeBtn = document.getElementById(btnId);
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                eyeBtn.textContent = "👁️‍🗨️";
+            } else {
+                passwordField.type = "password";
+                eyeBtn.textContent = "👁️";
+            }
+        }
+
+        async function studentSignUp() {
+            var rollNoInput = Number(document.getElementById("signupRollNo").value.trim());
+            var groupInput = document.getElementById("signupGroup").value;
+            var passInput = document.getElementById("signupPassword").value.trim();
+
+            if (!rollNoInput || groupInput === "" || !passInput) {
+                showToast("Please enter Roll Number, Group, and Password!", true);
+                return;
+            }
+
+            var found = null;
+            for (var i = 0; i < registeredStudents.length; i++) {
+                if (registeredStudents[i].rollNo === rollNoInput && registeredStudents[i].group === groupInput) {
+                    found = registeredStudents[i];
+                    break;
+                }
+            }
+
+            if (!found) {
+                showToast("Error: Invalid Roll Number or Group!", true);
+                return;
+            }
+
+            if (!window.firebaseDB) {
+                showToast("Connecting to server, please try again in a second!", true);
+                return;
+            }
+
+            const btn = document.getElementById("signupBtn");
+            btn.disabled = true;
+            btn.innerText = "Checking...";
+
+            const { db, ref, get, set } = window.firebaseDB;
+            const studentKey = `${groupInput}_${rollNoInput}`;
+            const studentRef = ref(db, `studentCredentials/${studentKey}`);
+            
+            try {
+                const snapshot = await get(studentRef);
+                
+                if (snapshot.exists()) {
+                    showToast("Already your ID exists!", true);
+                    btn.disabled = false;
+                    btn.innerText = "Sign Up";
+                    return;
+                }
+
+                await set(studentRef, { 
+                    password: passInput, 
+                    rollNo: rollNoInput, 
+                    name: found.name, 
+                    group: groupInput 
+                });
+
+                showToast("Sign Up Successful! Redirecting to login...");
+
+                setTimeout(function() {
+                    window.location.href = "studenLogin.html";
+                }, 1200);
+
+            } catch (error) {
+                console.error("Firebase error:", error);
+                showToast("Error connecting to database!", true);
+                btn.disabled = false;
+                btn.innerText = "Sign Up";
+            }
+        }
+    </script>
+</body>
+</html>

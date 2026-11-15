@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vigilance Attendance Login - Government Degree College</title>
+    <link rel="stylesheet" href="./loginPortal.css">
+    <!-- Toastify CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+</head>
+<body>
+
+    <div class="portal-container">
+        <div class="portal-card">
+            <img src="../ATQRC/logo.png" alt="College Logo" class="portal-logo" onerror="this.style.display='none'">
+            
+            <span class="badge-staff">Authorized Staff Only</span>
+            <h2 class="portal-title" style="font-size: 20px; margin-top: 5px;">Vigilance Attendance Login</h2>
+            <p class="portal-subtitle">QR Attendance System open karne ke liye apni Vigilance ID aur Password enter karein.</p>
+            
+            <div class="form-group-custom">
+                <label>Vigilance Officer ID:</label>
+                <input type="text" id="vigilanceId" placeholder="Enter Vigilance ID">
+            </div>
+
+            <div class="form-group-custom">
+                <label>Security Password / PIN:</label>
+                <div class="password-wrapper">
+                    <input type="password" id="vigilancePass" placeholder="Enter Security Password">
+                    <button type="button" class="eye-btn" id="toggleVigPass" onclick="togglePassword('vigilancePass', 'toggleVigPass')">👁️</button>
+                </div>
+            </div>
+
+            <button class="btn-portal-primary" onclick="vigilanceLogin()">Unlock Attendance Scanner</button>
+            
+            <div class="portal-links" style="justify-content: center;">
+                <a href="studenLogin.html">← Back to Student Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZLCOdefBONjySJ5OAetvxoz94zZ1KBvk",
+            authDomain: "studenportaldata.firebaseapp.com",
+            projectId: "studenportaldata",
+            storageBucket: "studenportaldata.firebasestorage.app",
+            messagingSenderId: "1034159221838",
+            appId: "1:1034159221838:web:a0d472290ad2982588a71f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        window.vigilanceDB = { db, ref, set };
+    </script>
+
+    <!-- Toastify JS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+        function showToast(message, isError = false) {
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                style: { background: isError ? "#dc2626" : "#16a34a" }
+            }).showToast();
+        }
+
+        function togglePassword(fieldId, btnId) {
+            const passwordField = document.getElementById(fieldId);
+            const eyeBtn = document.getElementById(btnId);
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                eyeBtn.textContent = "👁️‍🗨️";
+            } else {
+                passwordField.type = "password";
+                eyeBtn.textContent = "👁️";
+            }
+        }
+
+        async function vigilanceLogin() {
+            var idInput = document.getElementById("vigilanceId").value.trim();
+            var passInput = document.getElementById("vigilancePass").value.trim();
+
+            if (!idInput || !passInput) {
+                showToast("Please enter Vigilance ID and Password!", true);
+                return;
+            }
+
+            const VALID_ID = "vigilanceofficer";
+            const VALID_PASS = "CollageSecurity@104";
+
+            if (idInput.toLowerCase() === VALID_ID && passInput === VALID_PASS) {
+                if (window.vigilanceDB) {
+                    const { db, ref, set } = window.vigilanceDB;
+                    try {
+                        await set(ref(db, "vigilanceLogs/lastSession"), {
+                            officerId: idInput,
+                            loginTime: new Date().toLocaleString()
+                        });
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+
+                localStorage.setItem("vigilanceLoggedIn", "true");
+                showToast("Vigilance Verified! Opening QR Attendance System...");
+
+                setTimeout(function() {
+                    window.location.href = "../ATQRC/index.html";
+                }, 1000);
+
+            } else {
+                showToast("Access Denied! Invalid Vigilance ID or Password.", true);
+            }
+        }
+    </script>
+</body>
+</html>

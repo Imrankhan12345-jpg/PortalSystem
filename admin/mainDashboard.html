@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel - Attendance Dashboard</title>
+    <link rel="stylesheet" href="../ATQRC/style.css">
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body id="adminBody">
+
+    <!-- Admin Top Navbar -->
+    <nav id="adminNavbar" class="admin-navbar">
+        <div id="adminBrand" class="admin-brand">
+            🎓 GDC Admin Panel <span id="brandBadge">Portal</span>
+        </div>
+        <div id="navLinksContainer" class="nav-links">
+            <a href="mainDashboard.html" id="navDashboardLink" class="active">📊 Attendance Dashboard</a>
+            <a href="saveComplain.html" id="navComplainLink">📩 Complaints & Active Logins</a>
+        </div>
+    </nav>
+
+    <div id="dashboardMainContainer" class="main-container">
+        <!-- College Header / Title Card -->
+        <div id="dashboardHeaderCard" class="card">
+            <h2 id="dashboardPortalTitle">College Attendance Management Portal</h2>
+            <p id="dashboardPortalSubtitle">Select a department group below to view saved attendance records and details:</p>
+        </div>
+
+        <!-- 5 Group Cards Container -->
+        <div id="groupsGridContainer" class="groups-grid">
+            <div id="groupCardCS" class="group-card" onclick="openGroupPage('CS')">
+                <h3 id="titleCS">💻 Computer Science (CS)</h3>
+                <p id="descCS">View CS Department Attendance</p>
+            </div>
+
+            <div id="groupCardBio" class="group-card" onclick="openGroupPage('Bio')">
+                <h3 id="titleBio">🧬 Biology Science (Bio)</h3>
+                <p id="descBio">View Bio Department Attendance</p>
+            </div>
+
+            <div id="groupCardEng" class="group-card" onclick="openGroupPage('Eng')">
+                <h3 id="titleEng">📐 Pre-Engineering (Eng)</h3>
+                <p id="descEng">View Engineering Attendance</p>
+            </div>
+
+            <div id="groupCardArts" class="group-card" onclick="openGroupPage('Arts')">
+                <h3 id="titleArts">🎨 Arts Department</h3>
+                <p id="descArts">View Arts Attendance Records</p>
+            </div>
+
+            <div id="groupCardGen" class="group-card" onclick="openGroupPage('Gen')">
+                <h3 id="titleGen">📚 General Group</h3>
+                <p id="descGen">View General Attendance Records</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openGroupPage(groupName) {
+            window.location.href = "groupDetail.html?group=" + groupName;
+        }
+    </script>
+
+</body>
+</html>

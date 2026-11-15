@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Attendance Details</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- College Header -->
+    <div class="college-header">
+        <div>
+            <h1>Government Degree College</h1>
+            <p>Student Attendance Detail Portal</p>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="card">
+            <h2>Student Detailed Record</h2>
+            <hr id="Hr">
+
+            <!-- Detail Information Box -->
+            <div id="detailContainer" style="font-size: 16px; line-height: 1.8;">
+                <p>Loading details...</p>
+            </div>
+
+            <br>
+            <!-- Back Button -->
+            <a href="index.html" class="btn-primary" style="display: inline-block; text-align: center; text-decoration: none; padding: 10px 20px; margin-top: 15px;">← Back to Attendance</a>
+        </div>
+    </div>
+
+    <script>
+        // URL se rollNo aur date nikalna
+        const urlParams = new URLSearchParams(window.location.search);
+        const rollNo = urlParams.get("rollNo");
+        const date = urlParams.get("date");
+
+        // LocalStorage se attendance data fetch karna
+        var allAttendance = JSON.parse(localStorage.getItem("collegeAttendance")) || [];
+        var foundRecord = null;
+
+        for (var i = 0; i < allAttendance.length; i++) {
+            if (allAttendance[i].rollNo == rollNo && allAttendance[i].date === date) {
+                foundRecord = allAttendance[i];
+                break;
+            }
+        }
+
+        var container = document.getElementById("detailContainer");
+
+        if (foundRecord) {
+            container.innerHTML = `
+                <p><b>Student Name:</b> ${foundRecord.name}</p>
+                <p><b>Roll Number:</b> ${foundRecord.rollNo}</p>
+                <p><b>Group/Department:</b> ${foundRecord.group}</p>
+                <p><b>Attendance Date:</b> ${foundRecord.date}</p>
+                <p><b>Time Recorded:</b> ${foundRecord.time}</p>
+                <p><b>Description:</b> ${foundRecord.description}</p>
+            `;
+        } else {
+            container.innerHTML = "<p style='color: red;'>Error: Yeh record mojood nahi hai ya data delete ho chuka hai.</p>";
+        }
+    </script>
+
+</body>
+</html>

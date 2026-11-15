@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Group Attendance Records - Admin</title>
+    <link rel="stylesheet" href="../ATQRC/style.css">
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body id="groupDetailBody">
+
+    <!-- Admin Top Navbar -->
+    <nav id="adminNavbar" class="admin-navbar">
+        <div id="adminBrand" class="admin-brand">
+            🎓 GDC Admin Panel <span id="brandBadge">Portal</span>
+        </div>
+        <div id="navLinksContainer" class="nav-links">
+            <a href="mainDashboard.html" id="navDashboardLink" class="active">📊 Attendance Dashboard</a>
+            <a href="saveComplain.html" id="navComplainLink">📩 Complaints & Active Logins</a>
+        </div>
+    </nav>
+
+    <div id="groupContentWrapper" class="content-wrapper">
+        <div id="groupTopControls" class="top-controls">
+            <div id="groupHeaderLeft">
+                <h2 id="groupTitle">Group Attendance Records</h2>
+                <a href="mainDashboard.html" id="backToGroupsBtn" class="PgBackBtn">← Back to Groups</a>
+            </div>
+            
+            <div id="groupDateFilterBox">
+                <label id="selectDateLabel" class="selectDate-head">Select Date: </label>
+                <input type="date" id="filterDate" onchange="loadGroupData()">
+            </div>
+        </div>
+
+        <hr id="Hr">
+
+        <!-- Is div mein us group ka data show hoga -->
+        <div id="attendanceListContainer"></div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentGroup = urlParams.get("group") || "Selected";
+
+        document.getElementById("groupTitle").innerText = currentGroup + " Group Attendance Records";
+
+        window.onload = function() {
+            var today = new Date().toISOString().split('T')[0];
+            document.getElementById("filterDate").value = today;
+            loadGroupData();
+        };
+
+        function calculateStudentAccuracy(rollNo, groupName) {
+            var allAttendance = JSON.parse(localStorage.getItem("collegeAttendance")) || [];
+            var presentCount = 0;
+
+            for (var k = 0; k < allAttendance.length; k++) {
+                if (Number(allAttendance[k].rollNo) === Number(rollNo) && allAttendance[k].group === groupName) {
+                    presentCount++;
+                }
+            }
+
+            var totalWorkingDays = 25;
+            var percentage = presentCount > 0 ? Math.min(100, Math.round((presentCount / totalWorkingDays) * 100)) : 0;
+            return percentage + "% (" + presentCount + " Days Present)";
+        }
+
+        function loadGroupData() {
+            var chosenDate = document.getElementById("filterDate").value;
+            var allAttendance = JSON.parse(localStorage.getItem("collegeAttendance")) || [];
+            var container = document.getElementById("attendanceListContainer");
+            
+            container.innerHTML = "";
+            var foundAny = false;
+
+            for (var i = 0; i < allAttendance.length; i++) {
+                var record = allAttendance[i];
+                
+                if (record.group === currentGroup && record.date === chosenDate) {
+                    foundAny = true;
+                    var accuracyText = calculateStudentAccuracy(record.rollNo, record.group);
+
+                    var itemHTML = "<div class='student-item' onclick='showDetails(\"" + record.rollNo + "\", \"" + record.date + "\")' style='display: flex; justify-content: space-between; align-items: center; cursor: pointer;'>" +
+                                   "<div><b>" + record.name + "</b> (Roll No: " + record.rollNo + ") - " +
+                                   "<small style='color:green;'>Present at " + record.time + "</small></div>" +
+                                   "<div><span style='color: #2563eb; font-weight: bold; font-size: 13px; background: #e0f2fe; padding: 3px 8px; border-radius: 4px;'>Accuracy: " + accuracyText + "</span></div>" +
+                                   "</div>";
+                    
+                    container.innerHTML += itemHTML;
+                }
+            }
+
+            if (!foundAny) {
+                container.innerHTML = "<p id='inJSdata'>No Attendance Record Found for this Date.</p>";
+            }
+        }
+
+        function showDetails(rollNo, date) {
+            var allAttendance = JSON.parse(localStorage.getItem("collegeAttendance")) || [];
+            var studentRecord = null;
+
+            for (var i = 0; i < allAttendance.length; i++) {
+                if (allAttendance[i].rollNo == rollNo && allAttendance[i].date === date) {
+                    studentRecord = allAttendance[i];
+                    break;
+                }
+            }
+
+            if (studentRecord) {
+                var studentAcc = calculateStudentAccuracy(studentRecord.rollNo, studentRecord.group);
+                alert("=== STUDENT DETAIL ===\n" +
+                      "Name: " + studentRecord.name + "\n" +
+                      "Roll Number: " + studentRecord.rollNo + "\n" +
+                      "Group: " + studentRecord.group + "\n" +
+                      "Date: " + studentRecord.date + "\n" +
+                      "Time: " + studentRecord.time + "\n" +
+                      "Overall Accuracy: " + studentAcc + "\n" +
+                      "Description: " + studentRecord.description);
+            }
+        }
+    </script>
+
+</body>
+</html>
